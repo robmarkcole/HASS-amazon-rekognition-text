@@ -12,7 +12,9 @@ import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
 import voluptuous as vol
 from homeassistant.components.image_processing import (
+    CONF_SOURCE,
     CONF_ENTITY_ID,
+    CONF_NAME,
     DOMAIN,
     PLATFORM_SCHEMA,
     ImageProcessingEntity,
@@ -47,26 +49,7 @@ SUPPORTED_REGIONS = [
 ]
 
 CONF_BOTO_RETRIES = "boto_retries"
-
-CONF_ROI_Y_MIN = "roi_y_min"
-CONF_ROI_X_MIN = "roi_x_min"
-CONF_ROI_Y_MAX = "roi_y_max"
-CONF_ROI_X_MAX = "roi_x_max"
-
-DATETIME_FORMAT = "%Y-%m-%d_%H:%M:%S"
 DEFAULT_BOTO_RETRIES = 5
-
-DEFAULT_ROI_Y_MIN = 0.0
-DEFAULT_ROI_Y_MAX = 1.0
-DEFAULT_ROI_X_MIN = 0.0
-DEFAULT_ROI_X_MAX = 1.0
-
-DEFAULT_ROI = (
-    DEFAULT_ROI_Y_MIN,
-    DEFAULT_ROI_X_MIN,
-    DEFAULT_ROI_Y_MAX,
-    DEFAULT_ROI_X_MAX,
-)
 
 EVENT_TEXT_DETECTED = "rekognition.text_detected"
 
@@ -78,10 +61,6 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_REGION, default=DEFAULT_REGION): vol.In(SUPPORTED_REGIONS),
         vol.Required(CONF_ACCESS_KEY_ID): cv.string,
         vol.Required(CONF_SECRET_ACCESS_KEY): cv.string,
-        vol.Optional(CONF_ROI_Y_MIN, default=DEFAULT_ROI_Y_MIN): cv.small_float,
-        vol.Optional(CONF_ROI_X_MIN, default=DEFAULT_ROI_X_MIN): cv.small_float,
-        vol.Optional(CONF_ROI_Y_MAX, default=DEFAULT_ROI_Y_MAX): cv.small_float,
-        vol.Optional(CONF_ROI_X_MAX, default=DEFAULT_ROI_X_MAX): cv.small_float,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
         ),
@@ -125,12 +104,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
         entities.append(
             ObjectDetection(
                 rekognition_client=rekognition_client,
-                s3_client=s3_client,
                 region=config.get(CONF_REGION),
-                roi_y_min=config[CONF_ROI_Y_MIN],
-                roi_x_min=config[CONF_ROI_X_MIN],
-                roi_y_max=config[CONF_ROI_Y_MAX],
-                roi_x_max=config[CONF_ROI_X_MAX],
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
             )
@@ -144,18 +118,12 @@ class ObjectDetection(ImageProcessingEntity):
     def __init__(
         self,
         rekognition_client,
-        s3_client,
         region,
-        roi_y_min,
-        roi_x_min,
-        roi_y_max,
-        roi_x_max,
         camera_entity,
         name=None,
     ):
         """Init with the client."""
         self._aws_rekognition_client = rekognition_client
-        self._aws_s3_client = s3_client
         self._aws_region = region
 
         self._camera_entity = camera_entity
@@ -164,23 +132,10 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-
         self._state = None  # The number of instances of interest
-
-        self._roi_dict = {
-            "y_min": roi_y_min,
-            "x_min": roi_x_min,
-            "y_max": roi_y_max,
-            "x_max": roi_x_max,
-        }
-        self._image_width = None
-        self._image_height = None
-        self._image = None
 
     def process_image(self, image):
         """Process an image."""
-        self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
-        self._image_width, self._image_height = self._image.size
         self._state = None
         response = self._aws_rekognition_client.detect_text(Image={"Bytes": image})
         self._state = [t['DetectedText'] for t in response['TextDetections']]
@@ -214,13 +169,4 @@ class ObjectDetection(ImageProcessingEntity):
     def device_state_attributes(self):
         """Return device specific state attributes."""
         attr = {}
-        if self._save_file_folder:
-            attr[CONF_SAVE_FILE_FORMAT] = self._save_file_format
-            attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
-            attr[CONF_SAVE_TIMESTAMPTED_FILE] = self._save_timestamped_file
-            attr[CONF_ALWAYS_SAVE_LATEST_FILE] = self._always_save_latest_file
-            attr[CONF_SHOW_BOXES] = self._show_boxes
-        if self._s3_bucket:
-            attr[CONF_S3_BUCKET] = self._s3_bucket
-        attr["labels"] = self._labels
         return attr
