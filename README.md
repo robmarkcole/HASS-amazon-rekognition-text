@@ -1,7 +1,7 @@
 # HASS-amazon-rekognition-text
 Home Assistant integration to extract text from digital and mechanical displays using AWS rekognition.
 
-Adds an entity where the state of the entity is the detected text in the camera image. A region of interest (`roi`) should be used to select the region of the image containing the text you wish to read. Since the raw text itself is rarely the desired output, the sensor attributes expose the text processed in different ways, e.g. by applying regex to extract portions of the text. A template sensor can then be used to break out any of these attributes into their own sensor. 
+Adds an entity where the state of the entity is the detected text in the camera image. A region of interest (`roi`) should be used to select the region of the image containing the text you wish to read.
 
 **Note** that to view the configured `roi` you must configure the `save_file_folder` and view the latest saved image, which can be displayed on the HA UI with a [local_file camera](https://www.home-assistant.io/integrations/local_file/)
 
