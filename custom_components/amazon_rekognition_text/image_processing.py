@@ -48,12 +48,21 @@ SUPPORTED_REGIONS = [
     "sa-east-1",
 ]
 
+REQUIREMENTS = ["boto3"]
 CONF_BOTO_RETRIES = "boto_retries"
 DEFAULT_BOTO_RETRIES = 5
 
 EVENT_TEXT_DETECTED = "rekognition.text_detected"
 
-REQUIREMENTS = ["boto3"]
+CONF_ROI_Y_MIN = "roi_y_min"
+CONF_ROI_X_MIN = "roi_x_min"
+CONF_ROI_Y_MAX = "roi_y_max"
+CONF_ROI_X_MAX = "roi_x_max"
+
+DEFAULT_ROI_Y_MIN = 0.0
+DEFAULT_ROI_Y_MAX = 1.0
+DEFAULT_ROI_X_MIN = 0.0
+DEFAULT_ROI_X_MAX = 1.0
 
 
 PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
@@ -61,6 +70,10 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_REGION, default=DEFAULT_REGION): vol.In(SUPPORTED_REGIONS),
         vol.Required(CONF_ACCESS_KEY_ID): cv.string,
         vol.Required(CONF_SECRET_ACCESS_KEY): cv.string,
+        vol.Optional(CONF_ROI_Y_MIN, default=DEFAULT_ROI_Y_MIN): cv.small_float,
+        vol.Optional(CONF_ROI_X_MIN, default=DEFAULT_ROI_X_MIN): cv.small_float,
+        vol.Optional(CONF_ROI_Y_MAX, default=DEFAULT_ROI_Y_MAX): cv.small_float,
+        vol.Optional(CONF_ROI_X_MAX, default=DEFAULT_ROI_X_MAX): cv.small_float,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
         ),
@@ -105,6 +118,10 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             ObjectDetection(
                 rekognition_client=rekognition_client,
                 region=config.get(CONF_REGION),
+                roi_y_min=config[CONF_ROI_Y_MIN],
+                roi_x_min=config[CONF_ROI_X_MIN],
+                roi_y_max=config[CONF_ROI_Y_MAX],
+                roi_x_max=config[CONF_ROI_X_MAX],
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
             )
@@ -119,12 +136,20 @@ class ObjectDetection(ImageProcessingEntity):
         self,
         rekognition_client,
         region,
+        roi_y_min,
+        roi_x_min,
+        roi_y_max,
+        roi_x_max,
         camera_entity,
         name=None,
     ):
         """Init with the client."""
         self._aws_rekognition_client = rekognition_client
         self._aws_region = region
+        self._y_min = roi_y_min
+        self._x_min = roi_x_min
+        self._y_max = roi_y_max
+        self._x_max = roi_x_max
 
         self._camera_entity = camera_entity
         if name:  # Since name is optional.
@@ -132,13 +157,29 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-        self._state = None  # The number of instances of interest
+        self._detected_text = [""]
 
     def process_image(self, image):
         """Process an image."""
-        self._state = None
-        response = self._aws_rekognition_client.detect_text(Image={"Bytes": image})
-        self._state = [t['DetectedText'] for t in response['TextDetections']]
+        self._detected_text = [""]
+        response = self._aws_rekognition_client.detect_text(
+            Image={"Bytes": image},
+            Filters={
+                "RegionsOfInterest": [
+                    {
+                        "BoundingBox": {
+                            "Height": self._y_max,
+                            "Left": self._x_min,
+                            "Top": self._y_min,
+                            "Width": self._x_max,
+                        }
+                    }
+                ]
+            },
+        )
+        self._detected_text = [
+            t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "LINE"
+        ]  #  a list of string
 
     @property
     def camera_entity(self):
@@ -148,17 +189,12 @@ class ObjectDetection(ImageProcessingEntity):
     @property
     def state(self):
         """Return the state of the entity."""
-        return self._state
+        return "".join(self._detected_text).replace(" ", "")
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return self._name
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "characters"
 
     @property
     def should_poll(self):
