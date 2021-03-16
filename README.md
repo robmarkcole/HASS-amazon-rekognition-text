@@ -22,11 +22,15 @@ image_processing:
 ```
 
 Configuration variables:
+- **aws_access_key_id**: Your AWS key ID
+- **aws_secret_access_key**: Your AWS key secret
+- **region_name**: Your preferred AWS region
 - **roi_x_min**: (optional, default 0), range 0-1, must be less than roi_x_max
 - **roi_x_max**: (optional, default 1), range 0-1, must be more than roi_x_min
 - **roi_y_min**: (optional, default 0), range 0-1, must be less than roi_y_max
 - **roi_y_max**: (optional, default 1), range 0-1, must be more than roi_y_min
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
+- **source**: Must be a camera.
 
 For the ROI, the (x=0,y=0) position is the top left pixel of the image, and the (x=1,y=1) position is the bottom right pixel of the image. It might seem a bit odd to have y running from top to bottom of the image, but that is the coordinate system used by pillow.
 
