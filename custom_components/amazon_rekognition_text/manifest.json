@@ -5,7 +5,7 @@
         "version": "0.1.0",
         "requirements": [
                 "pillow",
-                "boto3>=1.17.27"
+                "boto3"
         ],
         "codeowners": [
                 "@robmarkcole"

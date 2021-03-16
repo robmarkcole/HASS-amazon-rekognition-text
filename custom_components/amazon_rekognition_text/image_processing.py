@@ -88,6 +88,14 @@ def get_valid_filename(name: str) -> str:
     return re.sub(r"(?u)[^-\w.]", "", str(name).strip().replace(" ", "_"))
 
 
+def image_to_byte_array(image: Image) -> bytes:
+    """Convert pil image to bytes"""
+    imgByteArr = io.BytesIO()
+    image.save(imgByteArr, format="png")
+    imgByteArr = imgByteArr.getvalue()
+    return imgByteArr
+
+
 def setup_platform(hass, config, add_devices, discovery_info=None):
     """Set up ObjectDetection."""
 
@@ -176,38 +184,34 @@ class ObjectDetection(ImageProcessingEntity):
     def process_image(self, image):
         """Process an image."""
         self._detected_text = [""]
+
+        self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
+        self._image_width, self._image_height = self._image.size
+        (left, upper, right, lower) = (
+            self._x_min * self._image_width,
+            self._y_min * self._image_height,
+            self._x_max * self._image_width,
+            self._y_max * self._image_height,
+        )
+
+        img_cropped = self._image.crop((left, upper, right, lower))
         response = self._aws_rekognition_client.detect_text(
-            Image={"Bytes": image},
-            Filters={
-                "RegionsOfInterest": [
-                    {
-                        "BoundingBox": {
-                            "Height": self._y_max,
-                            "Left": self._x_min,
-                            "Top": self._y_min,
-                            "Width": self._x_max,
-                        }
-                    }
-                ]
-            },
+            Image={"Bytes": image_to_byte_array(img_cropped)}
         )
         self._detected_text = [
             t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "LINE"
         ]  #  a list of string
         if self._save_file_folder:
-            self.save_image(image)
+            self.save_image()
 
-    def save_image(self, image):
-        pil_img = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
-        image_width, image_height = pil_img.size
-
-        draw = ImageDraw.Draw(pil_img)
+    def save_image(self):
+        # draw = ImageDraw.Draw(self._image)
 
         latest_save_path = (
             self._save_file_folder
             / f"{get_valid_filename(self._name).lower()}_latest.png"
         )
-        pil_img.save(latest_save_path)
+        self._image.save(latest_save_path)
         _LOGGER.info("Rekognition_text saved file %s", latest_save_path)
 
     @property
