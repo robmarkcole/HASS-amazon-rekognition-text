@@ -132,13 +132,13 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-        self._state = None  # The number of instances of interest
+        self._detected_text = ['']
 
     def process_image(self, image):
         """Process an image."""
-        self._state = None
+        self._detected_text = ['']
         response = self._aws_rekognition_client.detect_text(Image={"Bytes": image})
-        self._state = [t['DetectedText'] for t in response['TextDetections']]
+        self._detected_text = [t['DetectedText'] for t in response['TextDetections']] # a list of string
 
     @property
     def camera_entity(self):
@@ -148,17 +148,12 @@ class ObjectDetection(ImageProcessingEntity):
     @property
     def state(self):
         """Return the state of the entity."""
-        return self._state
+        return ''.join(self._detected_text)
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return self._name
-
-    @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return "characters"
 
     @property
     def should_poll(self):
