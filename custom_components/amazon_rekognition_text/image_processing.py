@@ -21,6 +21,7 @@ from homeassistant.components.image_processing import (
     ImageProcessingEntity,
 )
 from homeassistant.core import split_entity_id
+from homeassistant.util.pil import draw_box
 
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME
 
@@ -48,6 +49,8 @@ SUPPORTED_REGIONS = [
     "ap-south-1",
     "sa-east-1",
 ]
+
+RED = (255, 0, 0)
 
 REQUIREMENTS = ["boto3"]
 CONF_BOTO_RETRIES = "boto_retries"
@@ -205,7 +208,15 @@ class ObjectDetection(ImageProcessingEntity):
             self.save_image()
 
     def save_image(self):
-        # draw = ImageDraw.Draw(self._image)
+        draw = ImageDraw.Draw(self._image)
+        roi_tuple = (self._y_min, self._x_min, self._y_max, self._x_max)
+        draw_box(
+            draw,
+            roi_tuple,
+            self._image_width,
+            self._image_height,
+            color=RED,
+        )
 
         latest_save_path = (
             self._save_file_folder
