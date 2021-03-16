@@ -33,3 +33,12 @@ For the ROI, the (x=0,y=0) position is the top left pixel of the image, and the 
 <p align="center">
 <img src="https://github.com/robmarkcole/HASS-amazon-rekognition-text/blob/main/docs/usage.png" width="500">
 </p>
+
+## `local_file` camera example
+Example config for displaying the latest saved image:
+```yaml
+camera:
+  - platform: local_file
+    name: rekognition_text
+    file_path: /config/rekognition/rekognition_text_local_file_1_latest.png
+```
