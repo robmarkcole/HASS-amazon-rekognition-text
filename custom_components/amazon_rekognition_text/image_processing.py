@@ -5,8 +5,9 @@ import io
 import logging
 import re
 import time
+from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
@@ -20,6 +21,7 @@ from homeassistant.components.image_processing import (
     ImageProcessingEntity,
 )
 from homeassistant.core import split_entity_id
+from homeassistant.util.pil import draw_box
 
 from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME
 
@@ -48,6 +50,8 @@ SUPPORTED_REGIONS = [
     "sa-east-1",
 ]
 
+RED = (255, 0, 0)
+
 REQUIREMENTS = ["boto3"]
 CONF_BOTO_RETRIES = "boto_retries"
 DEFAULT_BOTO_RETRIES = 5
@@ -58,6 +62,7 @@ CONF_ROI_Y_MIN = "roi_y_min"
 CONF_ROI_X_MIN = "roi_x_min"
 CONF_ROI_Y_MAX = "roi_y_max"
 CONF_ROI_X_MAX = "roi_x_max"
+CONF_SAVE_FILE_FOLDER = "save_file_folder"
 
 DEFAULT_ROI_Y_MIN = 0.0
 DEFAULT_ROI_Y_MAX = 1.0
@@ -74,11 +79,24 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ROI_X_MIN, default=DEFAULT_ROI_X_MIN): cv.small_float,
         vol.Optional(CONF_ROI_Y_MAX, default=DEFAULT_ROI_Y_MAX): cv.small_float,
         vol.Optional(CONF_ROI_X_MAX, default=DEFAULT_ROI_X_MAX): cv.small_float,
+        vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
         ),
     }
 )
+
+
+def get_valid_filename(name: str) -> str:
+    return re.sub(r"(?u)[^-\w.]", "", str(name).strip().replace(" ", "_"))
+
+
+def image_to_byte_array(image: Image) -> bytes:
+    """Convert pil image to bytes"""
+    imgByteArr = io.BytesIO()
+    image.save(imgByteArr, format="png")
+    imgByteArr = imgByteArr.getvalue()
+    return imgByteArr
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
@@ -112,6 +130,10 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             "the boto_retries setting. Retry counter was {}".format(retries)
         )
 
+    save_file_folder = config.get(CONF_SAVE_FILE_FOLDER)
+    if save_file_folder:
+        save_file_folder = Path(save_file_folder)
+
     entities = []
     for camera in config[CONF_SOURCE]:
         entities.append(
@@ -122,6 +144,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 roi_x_min=config[CONF_ROI_X_MIN],
                 roi_y_max=config[CONF_ROI_Y_MAX],
                 roi_x_max=config[CONF_ROI_X_MAX],
+                save_file_folder=save_file_folder,
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
             )
@@ -140,6 +163,7 @@ class ObjectDetection(ImageProcessingEntity):
         roi_x_min,
         roi_y_max,
         roi_x_max,
+        save_file_folder,
         camera_entity,
         name=None,
     ):
@@ -150,6 +174,7 @@ class ObjectDetection(ImageProcessingEntity):
         self._x_min = roi_x_min
         self._y_max = roi_y_max
         self._x_max = roi_x_max
+        self._save_file_folder = save_file_folder
 
         self._camera_entity = camera_entity
         if name:  # Since name is optional.
@@ -162,24 +187,43 @@ class ObjectDetection(ImageProcessingEntity):
     def process_image(self, image):
         """Process an image."""
         self._detected_text = [""]
+
+        self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
+        self._image_width, self._image_height = self._image.size
+        (left, upper, right, lower) = (
+            self._x_min * self._image_width,
+            self._y_min * self._image_height,
+            self._x_max * self._image_width,
+            self._y_max * self._image_height,
+        )
+
+        img_cropped = self._image.crop((left, upper, right, lower))
         response = self._aws_rekognition_client.detect_text(
-            Image={"Bytes": image},
-            Filters={
-                "RegionsOfInterest": [
-                    {
-                        "BoundingBox": {
-                            "Height": self._y_max,
-                            "Left": self._x_min,
-                            "Top": self._y_min,
-                            "Width": self._x_max,
-                        }
-                    }
-                ]
-            },
+            Image={"Bytes": image_to_byte_array(img_cropped)}
         )
         self._detected_text = [
             t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "LINE"
         ]  #  a list of string
+        if self._save_file_folder:
+            self.save_image()
+
+    def save_image(self):
+        draw = ImageDraw.Draw(self._image)
+        roi_tuple = (self._y_min, self._x_min, self._y_max, self._x_max)
+        draw_box(
+            draw,
+            roi_tuple,
+            self._image_width,
+            self._image_height,
+            color=RED,
+        )
+
+        latest_save_path = (
+            self._save_file_folder
+            / f"{get_valid_filename(self._name).lower()}_latest.png"
+        )
+        self._image.save(latest_save_path)
+        _LOGGER.info("Rekognition_text saved file %s", latest_save_path)
 
     @property
     def camera_entity(self):
@@ -205,4 +249,6 @@ class ObjectDetection(ImageProcessingEntity):
     def device_state_attributes(self):
         """Return device specific state attributes."""
         attr = {}
+        if self._save_file_folder:
+            attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
         return attr
