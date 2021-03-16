@@ -7,7 +7,7 @@ import re
 import time
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
@@ -82,6 +82,10 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         ),
     }
 )
+
+
+def get_valid_filename(name: str) -> str:
+    return re.sub(r"(?u)[^-\w.]", "", str(name).strip().replace(" ", "_"))
 
 
 def setup_platform(hass, config, add_devices, discovery_info=None):
@@ -191,10 +195,20 @@ class ObjectDetection(ImageProcessingEntity):
             t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "LINE"
         ]  #  a list of string
         if self._save_file_folder:
-            self.save_image()
+            self.save_image(image)
 
-    def save_image():
-        return
+    def save_image(self, image):
+        pil_img = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
+        image_width, image_height = pil_img.size
+
+        draw = ImageDraw.Draw(pil_img)
+
+        latest_save_path = (
+            self._save_file_folder
+            / f"{get_valid_filename(self._name).lower()}_latest.png"
+        )
+        pil_img.save(latest_save_path)
+        _LOGGER.info("Rekognition_text saved file %s", latest_save_path)
 
     @property
     def camera_entity(self):
