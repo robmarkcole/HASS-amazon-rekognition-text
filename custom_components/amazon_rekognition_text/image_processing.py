@@ -182,11 +182,11 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-        self._detected_text = [""]
+        self._detected_text = []
 
     def process_image(self, image):
         """Process an image."""
-        self._detected_text = [""]
+        self._detected_text = []
 
         self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
         self._image_width, self._image_height = self._image.size
@@ -202,7 +202,7 @@ class ObjectDetection(ImageProcessingEntity):
             Image={"Bytes": image_to_byte_array(img_cropped)}
         )
         self._detected_text = [
-            t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "LINE"
+            t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "WORD"
         ]  #  a list of string
         if self._save_file_folder:
             self.save_image()
@@ -249,6 +249,10 @@ class ObjectDetection(ImageProcessingEntity):
     def device_state_attributes(self):
         """Return device specific state attributes."""
         attr = {}
+        if self._detected_text:
+            attr["detected_text"] = self._detected_text
+        else:
+            attr["detected_text"] = ""
         if self._save_file_folder:
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
         return attr
