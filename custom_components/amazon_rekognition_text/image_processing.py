@@ -5,6 +5,7 @@ import io
 import logging
 import re
 import time
+from pathlib import Path
 
 from PIL import Image
 
@@ -58,6 +59,7 @@ CONF_ROI_Y_MIN = "roi_y_min"
 CONF_ROI_X_MIN = "roi_x_min"
 CONF_ROI_Y_MAX = "roi_y_max"
 CONF_ROI_X_MAX = "roi_x_max"
+CONF_SAVE_FILE_FOLDER = "save_file_folder"
 
 DEFAULT_ROI_Y_MIN = 0.0
 DEFAULT_ROI_Y_MAX = 1.0
@@ -74,6 +76,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ROI_X_MIN, default=DEFAULT_ROI_X_MIN): cv.small_float,
         vol.Optional(CONF_ROI_Y_MAX, default=DEFAULT_ROI_Y_MAX): cv.small_float,
         vol.Optional(CONF_ROI_X_MAX, default=DEFAULT_ROI_X_MAX): cv.small_float,
+        vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
         ),
@@ -112,6 +115,10 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             "the boto_retries setting. Retry counter was {}".format(retries)
         )
 
+    save_file_folder = config.get(CONF_SAVE_FILE_FOLDER)
+    if save_file_folder:
+        save_file_folder = Path(save_file_folder)
+
     entities = []
     for camera in config[CONF_SOURCE]:
         entities.append(
@@ -122,6 +129,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 roi_x_min=config[CONF_ROI_X_MIN],
                 roi_y_max=config[CONF_ROI_Y_MAX],
                 roi_x_max=config[CONF_ROI_X_MAX],
+                save_file_folder=save_file_folder,
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
             )
@@ -140,6 +148,7 @@ class ObjectDetection(ImageProcessingEntity):
         roi_x_min,
         roi_y_max,
         roi_x_max,
+        save_file_folder,
         camera_entity,
         name=None,
     ):
@@ -150,6 +159,7 @@ class ObjectDetection(ImageProcessingEntity):
         self._x_min = roi_x_min
         self._y_max = roi_y_max
         self._x_max = roi_x_max
+        self._save_file_folder = save_file_folder
 
         self._camera_entity = camera_entity
         if name:  # Since name is optional.
@@ -180,6 +190,11 @@ class ObjectDetection(ImageProcessingEntity):
         self._detected_text = [
             t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "LINE"
         ]  #  a list of string
+        if self._save_file_folder:
+            self.save_image()
+
+    def save_image():
+        return
 
     @property
     def camera_entity(self):
@@ -205,4 +220,6 @@ class ObjectDetection(ImageProcessingEntity):
     def device_state_attributes(self):
         """Return device specific state attributes."""
         attr = {}
+        if self._save_file_folder:
+            attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
         return attr
