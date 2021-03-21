@@ -46,3 +46,10 @@ camera:
     name: rekognition_text
     file_path: /config/rekognition/rekognition_text_local_file_1_latest.png
 ```
+
+## Streamlit app
+A streamlit app is available to help with config. Either run locally following the instructions below or go to this url to run a hosted version.
+
+* Create and activate a venv: `python3 -m venv venv` and `source venv/bin/activate`
+* Install requirements: `pip3 install -r requirements-app.txt`
+* Run streamlit from `app` folder: `streamlit run strealit-app.py`
