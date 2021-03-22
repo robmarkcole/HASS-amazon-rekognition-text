@@ -43,8 +43,7 @@ def draw_box(
     the bounding box will be `(40, 10)` to `(180, 50)` (in (x,y) coordinates).
     """
 
-    line_width = 3
-    font_height = 8
+    line_width = 10
     y_min, x_min, y_max, x_max = box
     (left, right, top, bottom) = (
         x_min * img_width,
@@ -57,12 +56,12 @@ def draw_box(
         width=line_width,
         fill=color,
     )
-    if text:
-        draw.text(
-            (left + line_width, abs(top - line_width - font_height)), text, fill=color
-        )
 
 st.title("Integration config helper app")
+st.text("This app is to help determine the ROI config for your image processing integration")
+st.text("Upload an image from your camera and adjust the sliders to outline the text you wish to capture")
+
+
 img_file_buffer = st.file_uploader("Upload an image", type=["png", "jpg", "jpeg"])
 
 if img_file_buffer is not None:
@@ -86,3 +85,12 @@ st.text('Top left is (x=0, y=0), bottom left is (x=0, y=1), bottom right is (x=1
 st.image(
     pil_image, use_column_width=True,
 )
+
+config_yaml = f"""
+roi_x_min: {ROI_X_MIN} \n
+roi_x_max: {ROI_X_MAX} \n
+roi_y_min: {ROI_Y_MIN} \n
+roi_y_max: {ROI_Y_MAX} \n
+"""
+st.write('The roi values to enter in your integration config are:')
+st.markdown(config_yaml, unsafe_allow_html=True)
