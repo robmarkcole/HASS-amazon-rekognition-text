@@ -55,5 +55,5 @@ A streamlit app is available to help with config. Either run locally following t
 * Run streamlit from `app` folder: `streamlit run streamlit_app.py`
 
 <p align="center">
-<img src="https://github.com/robmarkcole/HASS-amazon-rekognition-text/blob/main/docs/streamlit_app.png" width="700">
+<img src="https://github.com/robmarkcole/HASS-amazon-rekognition-text/blob/main/docs/streamlit_app.png" width="900">
 </p>
