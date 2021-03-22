@@ -48,11 +48,14 @@ camera:
 ```
 
 ## Streamlit app
-A streamlit app is available to help with config. Either run locally following the instructions below or go to this url to run a hosted version.
+A streamlit app is available to help with config. To use a hosted version go to:
+- [https://share.streamlit.io/robmarkcole/hass-amazon-rekognition-text/main](https://share.streamlit.io/robmarkcole/hass-amazon-rekognition-text/main)
 
-* Create and activate a venv: `python3 -m venv venv` and `source venv/bin/activate`
+Or run locally following the instructions below:
+* Create a venv: `python3 -m venv venv`
+* Activate venv: `source venv/bin/activate`
 * Install requirements: `pip3 install -r requirements-app.txt`
-* Run streamlit from `app` folder: `streamlit run streamlit_app.py`
+* Run streamlit app: `streamlit run streamlit_app.py`
 
 <p align="center">
 <img src="https://github.com/robmarkcole/HASS-amazon-rekognition-text/blob/main/docs/streamlit_app.png" width="900">
