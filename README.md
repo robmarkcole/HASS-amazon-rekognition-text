@@ -32,7 +32,7 @@ Configuration variables:
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
 - **source**: Must be a camera.
 
-For the ROI, the (x=0,y=0) position is the top left pixel of the image, and the (x=1,y=1) position is the bottom right pixel of the image. It might seem a bit odd to have y running from top to bottom of the image, but that is the coordinate system used by pillow.
+For the ROI, the (x=0,y=0) position is the top left pixel of the image, and the (x=1,y=1) position is the bottom right pixel of the image. It might seem a bit odd to have y running from top to bottom of the image, but that is the coordinate system used by pillow. A streamlit app is provided to help with configuration of the ROI values, documented at the end of this readme.
 
 <p align="center">
 <img src="https://github.com/robmarkcole/HASS-amazon-rekognition-text/blob/main/docs/usage.png" width="500">
@@ -46,3 +46,14 @@ camera:
     name: rekognition_text
     file_path: /config/rekognition/rekognition_text_local_file_1_latest.png
 ```
+
+## Streamlit app
+A streamlit app is available to help with config. Either run locally following the instructions below or go to this url to run a hosted version.
+
+* Create and activate a venv: `python3 -m venv venv` and `source venv/bin/activate`
+* Install requirements: `pip3 install -r requirements-app.txt`
+* Run streamlit from `app` folder: `streamlit run streamlit_app.py`
+
+<p align="center">
+<img src="https://github.com/robmarkcole/HASS-amazon-rekognition-text/blob/main/docs/streamlit_app.png" width="700">
+</p>
