@@ -1,9 +1,12 @@
 # HASS-amazon-rekognition-text
 Home Assistant integration to extract text from digital and mechanical displays using AWS rekognition computer vision service.
 
-This integration adds an entity where the state of the entity is the detected text in the camera image. A region of interest (`roi`) should be used to select the region of the image containing the text you wish to read. Optionally various processing can be performed to help improve detection. You should experiment with these options if you are experiencing errors in the detected text. For example `make_bw` will convert images to black and white before processing, and this can be useful to remove sunlight effects that hinder text detection.
+This integration adds an entity where the state of the entity is the detected text in the camera image. A region of interest (`roi`) should be used to select the region of the image containing the text you wish to read. Optionally various processing can be performed to help improve detection. You should experiment with these options if you are experiencing errors in the detected text. The processing options are: 
 
-**Note** that to view the configured `roi` you must configure the `save_file_folder` and view the latest saved image, which can be displayed on the HA UI with a [local_file camera](https://www.home-assistant.io/integrations/local_file/)
+- `make_bw` will convert images to black and white before processing
+
+## Configuration in Home Assistant
+Place the `custom_components` folder in your configuration directory (or add its contents to an existing `custom_components` folder). Then configure the integration.
 
 Example config:
 ```yaml
@@ -33,13 +36,13 @@ Configuration variables:
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
 - **source**: Must be a camera.
 
-For the ROI, the (x=0,y=0) position is the top left pixel of the image, and the (x=1,y=1) position is the bottom right pixel of the image. It might seem a bit odd to have y running from top to bottom of the image, but that is the coordinate system used by pillow. A streamlit app is provided to help with configuration of the ROI values, documented at the end of this readme.
+For the `roi`, the (x=0,y=0) position is the top left pixel of the image, and the (x=1,y=1) position is the bottom right pixel of the image. It might seem a bit odd to have y running from top to bottom of the image, but that is the coordinate system used by pillow. A streamlit app is provided to help with configuration of the ROI values, documented at the end of this readme. **Note** that to view the configured `roi` you must configure the `save_file_folder` and view the latest saved image, which can be displayed on the HA UI with a [local_file camera](https://www.home-assistant.io/integrations/local_file/)
 
 <p align="center">
 <img src="https://github.com/robmarkcole/HASS-amazon-rekognition-text/blob/main/docs/usage.png" width="500">
 </p>
 
-## `local_file` camera example
+## local_file camera example
 Example config for displaying the latest saved image:
 ```yaml
 camera:
