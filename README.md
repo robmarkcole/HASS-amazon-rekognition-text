@@ -52,4 +52,4 @@ A streamlit app is available to help with config. Either run locally following t
 
 * Create and activate a venv: `python3 -m venv venv` and `source venv/bin/activate`
 * Install requirements: `pip3 install -r requirements-app.txt`
-* Run streamlit from `app` folder: `streamlit run strealit-app.py`
+* Run streamlit from `app` folder: `streamlit run streamlit_app.py`
