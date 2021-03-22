@@ -58,6 +58,7 @@ DEFAULT_BOTO_RETRIES = 5
 
 EVENT_TEXT_DETECTED = "rekognition.text_detected"
 
+CONF_MAKE_BW = "make_bw"
 CONF_ROI_Y_MIN = "roi_y_min"
 CONF_ROI_X_MIN = "roi_x_min"
 CONF_ROI_Y_MAX = "roi_y_max"
@@ -79,6 +80,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ROI_X_MIN, default=DEFAULT_ROI_X_MIN): cv.small_float,
         vol.Optional(CONF_ROI_Y_MAX, default=DEFAULT_ROI_Y_MAX): cv.small_float,
         vol.Optional(CONF_ROI_X_MAX, default=DEFAULT_ROI_X_MAX): cv.small_float,
+        vol.Optional(CONF_MAKE_BW, default=False): cv.boolean,
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
@@ -140,10 +142,11 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
             ObjectDetection(
                 rekognition_client=rekognition_client,
                 region=config.get(CONF_REGION),
-                roi_y_min=config[CONF_ROI_Y_MIN],
-                roi_x_min=config[CONF_ROI_X_MIN],
-                roi_y_max=config[CONF_ROI_Y_MAX],
-                roi_x_max=config[CONF_ROI_X_MAX],
+                roi_y_min=config.get(CONF_ROI_Y_MIN),
+                roi_x_min=config.get(CONF_ROI_X_MIN),
+                roi_y_max=config.get(CONF_ROI_Y_MAX),
+                roi_x_max=config.get(CONF_ROI_X_MAX),
+                make_bw=config.get(CONF_MAKE_BW),
                 save_file_folder=save_file_folder,
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
@@ -163,6 +166,7 @@ class ObjectDetection(ImageProcessingEntity):
         roi_x_min,
         roi_y_max,
         roi_x_max,
+        make_bw,
         save_file_folder,
         camera_entity,
         name=None,
@@ -174,6 +178,7 @@ class ObjectDetection(ImageProcessingEntity):
         self._x_min = roi_x_min
         self._y_max = roi_y_max
         self._x_max = roi_x_max
+        self._make_bw = make_bw
         self._save_file_folder = save_file_folder
 
         self._camera_entity = camera_entity
@@ -182,11 +187,11 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-        self._detected_text = [""]
+        self._detected_text = []
 
     def process_image(self, image):
         """Process an image."""
-        self._detected_text = [""]
+        self._detected_text = []
 
         self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
         self._image_width, self._image_height = self._image.size
@@ -198,11 +203,14 @@ class ObjectDetection(ImageProcessingEntity):
         )
 
         img_cropped = self._image.crop((left, upper, right, lower))
+        if self._make_bw:
+            img_cropped = img_cropped.convert('L') # convert to black and white
+
         response = self._aws_rekognition_client.detect_text(
             Image={"Bytes": image_to_byte_array(img_cropped)}
         )
         self._detected_text = [
-            t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "LINE"
+            t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "WORD"
         ]  #  a list of string
         if self._save_file_folder:
             self.save_image()
@@ -249,6 +257,11 @@ class ObjectDetection(ImageProcessingEntity):
     def device_state_attributes(self):
         """Return device specific state attributes."""
         attr = {}
+        attr[CONF_MAKE_BW] = self._make_bw
+        if self._detected_text:
+            attr["detected_text"] = self._detected_text
+        else:
+            attr["detected_text"] = ""
         if self._save_file_folder:
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
         return attr
