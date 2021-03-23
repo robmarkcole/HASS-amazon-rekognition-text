@@ -51,6 +51,7 @@ SUPPORTED_REGIONS = [
 ]
 
 RED = (255, 0, 0)
+DATETIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 
 REQUIREMENTS = ["boto3"]
 CONF_BOTO_RETRIES = "boto_retries"
@@ -71,6 +72,7 @@ CONF_ROI_X_MIN = "roi_x_min"
 CONF_ROI_Y_MAX = "roi_y_max"
 CONF_ROI_X_MAX = "roi_x_max"
 CONF_SAVE_FILE_FOLDER = "save_file_folder"
+CONF_SAVE_TIMESTAMPTED_FILE = "save_timestamped_file"
 
 DEFAULT_ROI_Y_MIN = 0.0
 DEFAULT_ROI_Y_MAX = 1.0
@@ -90,6 +92,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_MAKE_BW, default=False): cv.boolean,
         vol.Optional(CONF_ERODE, default=None): vol.In([None, "low", "medium", "high"]),
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
+        vol.Optional(CONF_SAVE_TIMESTAMPTED_FILE, default=False): cv.boolean,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
         ),
@@ -157,6 +160,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 make_bw=config.get(CONF_MAKE_BW),
                 erode=config.get(CONF_ERODE),
                 save_file_folder=save_file_folder,
+                save_timestamped_file=config.get(CONF_SAVE_TIMESTAMPTED_FILE),
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
             )
@@ -178,6 +182,7 @@ class ObjectDetection(ImageProcessingEntity):
         make_bw,
         erode,
         save_file_folder,
+        save_timestamped_file,
         camera_entity,
         name=None,
     ):
@@ -191,6 +196,7 @@ class ObjectDetection(ImageProcessingEntity):
         self._make_bw = make_bw
         self._erode = erode
         self._save_file_folder = save_file_folder
+        self._save_timestamped_file = save_timestamped_file
 
         self._camera_entity = camera_entity
         if name:  # Since name is optional.
@@ -247,6 +253,11 @@ class ObjectDetection(ImageProcessingEntity):
         )
         self._image.save(latest_save_path)
         _LOGGER.info("Rekognition_text saved file %s", latest_save_path)
+        if self._save_timestamped_file:
+            now_str = dt_util.now().strftime(DATETIME_FORMAT)
+            timestamp_save_path = self._save_file_folder / f"{self._name}_{now_str}.png"
+            self._image.save(timestamp_save_path)
+            _LOGGER.info("Rekognition_text saved file %s", timestamp_save_path)
 
     @property
     def camera_entity(self):
@@ -281,4 +292,5 @@ class ObjectDetection(ImageProcessingEntity):
             attr["detected_text"] = ""
         if self._save_file_folder:
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
+            attr[CONF_SAVE_TIMESTAMPTED_FILE] = self._save_timestamped_file
         return attr
