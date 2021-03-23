@@ -7,7 +7,7 @@ import re
 import time
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 import homeassistant.helpers.config_validation as cv
 import homeassistant.util.dt as dt_util
@@ -58,6 +58,13 @@ DEFAULT_BOTO_RETRIES = 5
 
 EVENT_TEXT_DETECTED = "rekognition.text_detected"
 
+EROSION_MAP = {
+    "low": 3,
+    "medium": 5,
+    "high": 9
+}
+
+CONF_ERODE = "erode"
 CONF_MAKE_BW = "make_bw"
 CONF_ROI_Y_MIN = "roi_y_min"
 CONF_ROI_X_MIN = "roi_x_min"
@@ -81,6 +88,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ROI_Y_MAX, default=DEFAULT_ROI_Y_MAX): cv.small_float,
         vol.Optional(CONF_ROI_X_MAX, default=DEFAULT_ROI_X_MAX): cv.small_float,
         vol.Optional(CONF_MAKE_BW, default=False): cv.boolean,
+        vol.Optional(CONF_ERODE, default=None): vol.In([None, "low", "medium", "high"]),
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
@@ -147,6 +155,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 roi_y_max=config.get(CONF_ROI_Y_MAX),
                 roi_x_max=config.get(CONF_ROI_X_MAX),
                 make_bw=config.get(CONF_MAKE_BW),
+                erode=config.get(CONF_ERODE),
                 save_file_folder=save_file_folder,
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
@@ -167,6 +176,7 @@ class ObjectDetection(ImageProcessingEntity):
         roi_y_max,
         roi_x_max,
         make_bw,
+        erode,
         save_file_folder,
         camera_entity,
         name=None,
@@ -179,6 +189,7 @@ class ObjectDetection(ImageProcessingEntity):
         self._y_max = roi_y_max
         self._x_max = roi_x_max
         self._make_bw = make_bw
+        self._erode = erode
         self._save_file_folder = save_file_folder
 
         self._camera_entity = camera_entity
@@ -202,9 +213,13 @@ class ObjectDetection(ImageProcessingEntity):
             self._y_max * self._image_height,
         )
 
+        # Crop and process the image before sending to AWS
         img_cropped = self._image.crop((left, upper, right, lower))
         if self._make_bw:
             img_cropped = img_cropped.convert('L') # convert to black and white
+        if self._erode:
+            erode_factor = EROSION_MAP.get(self._erode) # returns value ad configured sensitivity
+            img_cropped = img_cropped.filter(ImageFilter.MinFilter(erode_factor)) # erode
 
         response = self._aws_rekognition_client.detect_text(
             Image={"Bytes": image_to_byte_array(img_cropped)}
@@ -258,6 +273,8 @@ class ObjectDetection(ImageProcessingEntity):
         """Return device specific state attributes."""
         attr = {}
         attr[CONF_MAKE_BW] = self._make_bw
+        if self._erode:
+            attr[CONF_ERODE] = self._erode
         if self._detected_text:
             attr["detected_text"] = self._detected_text
         else:
