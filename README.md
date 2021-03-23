@@ -1,9 +1,10 @@
 # HASS-amazon-rekognition-text
 Home Assistant integration to extract text from digital and mechanical displays using AWS rekognition computer vision service.
 
-This integration adds an entity where the state of the entity is the detected text in the camera image. A region of interest (`roi`) should be used to select the region of the image containing the text you wish to read. Optionally various processing can be performed to help improve detection. You should experiment with these options if you are experiencing errors in the detected text. The processing options are: 
+This integration adds an entity where the state of the entity is the detected text in the camera image. A region of interest (`roi`) should be used to select the region of the image containing the text you wish to read. Optionally various processing can be performed to help improve detection. You should experiment with these options if you are experiencing errors in the detected text. The processing options are:
 
 - `make_bw` will convert images to black and white before processing
+- `erode` can be used for pixelated LCD screens, to erode discrete pixels into single characters, start with `low`
 
 ## Configuration in Home Assistant
 Place the `custom_components` folder in your configuration directory (or add its contents to an existing `custom_components` folder). Then configure the integration.
@@ -33,6 +34,7 @@ Configuration variables:
 - **roi_y_min**: (optional, default 0), range 0-1, must be less than roi_y_max
 - **roi_y_max**: (optional, default 1), range 0-1, must be more than roi_y_min
 - **make_bw**: (optional, default False), if `True`, converts image to black and white before processing
+- **erode**: (optional, default None, values are `low`, `medium`, `high`), useful for merging black pixels
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
 - **source**: Must be a camera.
 
