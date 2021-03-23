@@ -57,7 +57,8 @@ REQUIREMENTS = ["boto3"]
 CONF_BOTO_RETRIES = "boto_retries"
 DEFAULT_BOTO_RETRIES = 5
 
-EVENT_TEXT_DETECTED = "rekognition.text_detected"
+# Numbers only
+NUMBERS_ONLY_REGEX = r'\d+'
 
 EROSION_MAP = {
     "low": 3,
@@ -67,6 +68,7 @@ EROSION_MAP = {
 
 CONF_ERODE = "erode"
 CONF_MAKE_BW = "make_bw"
+CONF_NUMBERS_ONLY = "numbers_only"
 CONF_ROI_Y_MIN = "roi_y_min"
 CONF_ROI_X_MIN = "roi_x_min"
 CONF_ROI_Y_MAX = "roi_y_max"
@@ -89,6 +91,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ROI_X_MIN, default=DEFAULT_ROI_X_MIN): cv.small_float,
         vol.Optional(CONF_ROI_Y_MAX, default=DEFAULT_ROI_Y_MAX): cv.small_float,
         vol.Optional(CONF_ROI_X_MAX, default=DEFAULT_ROI_X_MAX): cv.small_float,
+        vol.Optional(CONF_NUMBERS_ONLY, default=False): cv.boolean,
         vol.Optional(CONF_MAKE_BW, default=False): cv.boolean,
         vol.Optional(CONF_ERODE, default=None): vol.In([None, "low", "medium", "high"]),
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
@@ -157,6 +160,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 roi_x_min=config.get(CONF_ROI_X_MIN),
                 roi_y_max=config.get(CONF_ROI_Y_MAX),
                 roi_x_max=config.get(CONF_ROI_X_MAX),
+                numbers_only=config.get(CONF_NUMBERS_ONLY),
                 make_bw=config.get(CONF_MAKE_BW),
                 erode=config.get(CONF_ERODE),
                 save_file_folder=save_file_folder,
@@ -179,6 +183,7 @@ class ObjectDetection(ImageProcessingEntity):
         roi_x_min,
         roi_y_max,
         roi_x_max,
+        numbers_only,
         make_bw,
         erode,
         save_file_folder,
@@ -193,6 +198,7 @@ class ObjectDetection(ImageProcessingEntity):
         self._x_min = roi_x_min
         self._y_max = roi_y_max
         self._x_max = roi_x_max
+        self._numbers_only = numbers_only
         self._make_bw = make_bw
         self._erode = erode
         self._save_file_folder = save_file_folder
@@ -267,7 +273,11 @@ class ObjectDetection(ImageProcessingEntity):
     @property
     def state(self):
         """Return the state of the entity."""
-        return "".join(self._detected_text).replace(" ", "")
+        text_no_whitespace = "".join(self._detected_text).replace(" ", "")
+        if self._numbers_only:
+            found_numbers = "".join(re.findall(NUMBERS_ONLY_REGEX, text_no_whitespace))
+            return found_numbers.lstrip('0')
+        return text_no_whitespace
 
     @property
     def name(self):
