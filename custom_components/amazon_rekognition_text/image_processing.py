@@ -59,6 +59,7 @@ DEFAULT_BOTO_RETRIES = 5
 
 # Numbers only
 NUMBERS_ONLY_REGEX = r'\d+'
+DECIMALS_REGEX = r'^\d*\.?\d*$'
 
 EROSION_MAP = {
     "low": 3,
@@ -274,9 +275,14 @@ class ObjectDetection(ImageProcessingEntity):
     def state(self):
         """Return the state of the entity."""
         text_no_whitespace = "".join(self._detected_text).replace(" ", "")
-        if self._numbers_only:
-            found_numbers = "".join(re.findall(NUMBERS_ONLY_REGEX, text_no_whitespace))
-            return found_numbers.lstrip('0')
+        if self._numbers_only: # attempt to return numbers
+            found_numbers = re.findall(DECIMALS_REGEX, text_no_whitespace) # can be a list
+            if not found_numbers: # Failed to find decimals, try numbers only
+                found_numbers = re.findall(NUMBERS_ONLY_REGEX, text_no_whitespace) # can be a list
+            found_numbers = "".join(found_numbers) # join the list
+            found_numbers = found_numbers.lstrip('0') # strip leading zeros
+            if found_numbers:
+                return found_numbers
         return text_no_whitespace
 
     @property
@@ -293,7 +299,10 @@ class ObjectDetection(ImageProcessingEntity):
     def device_state_attributes(self):
         """Return device specific state attributes."""
         attr = {}
-        attr[CONF_MAKE_BW] = self._make_bw
+        if self._numbers_only:
+            attr[CONF_NUMBERS_ONLY] = self._numbers_only
+        if self._make_bw:
+            attr[CONF_MAKE_BW] = self._make_bw
         if self._erode:
             attr[CONF_ERODE] = self._erode
         if self._detected_text:
