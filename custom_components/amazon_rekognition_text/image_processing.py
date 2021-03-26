@@ -242,7 +242,7 @@ class ObjectDetection(ImageProcessingEntity):
         }  # e.g. {'1352': 89.22, 'the': 70.25}
 
         if len(detected_text) == 0:
-            _LOGGER.info("Rekognition_text found no text")
+            _LOGGER.warning(f"{self._name} found no text")
             return
 
         # SInce we have text, get the result with the highest confidence
