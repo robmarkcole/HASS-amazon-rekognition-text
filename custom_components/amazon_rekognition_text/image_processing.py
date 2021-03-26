@@ -207,12 +207,10 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-        self._detected_text = [""]
+        self._state = None
 
     def process_image(self, image):
         """Process an image."""
-        self._detected_text = [""]
-
         self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
         self._image_width, self._image_height = self._image.size
         (left, upper, right, lower) = (
@@ -237,9 +235,31 @@ class ObjectDetection(ImageProcessingEntity):
         response = self._aws_rekognition_client.detect_text(
             Image={"Bytes": image_to_byte_array(img_cropped)}
         )
-        self._detected_text = [
-            t["DetectedText"] for t in response["TextDetections"] if t["Type"] == "WORD"
-        ]  #  a list of string
+        detected_text = {
+            t["DetectedText"]: round(t["Confidence"], 2)
+            for t in response["TextDetections"]
+            if t["Type"] == "WORD"
+        }  # e.g. {'1352': 89.22, 'the': 70.25}
+
+        if len(detected_text) == 0:
+            _LOGGER.info("Rekognition_text found no text")
+            return
+
+        # SInce we have text, get the result with the highest confidence
+        max_confidence = max(detected_text.values())
+        most_confident_text = [
+            k for k, v in detected_text.items() if v == max_confidence
+        ][
+            0
+        ]  # keep highest confidence result
+
+        if self._numbers_only:  # attempt to return numbers
+            found_numbers = re.sub("[^0-9,.]", "", most_confident_text)
+            if found_numbers:
+                self._state = found_numbers
+        else:
+            self._state = most_confident_text
+
         if self._save_file_folder:
             self.save_image()
 
@@ -274,12 +294,7 @@ class ObjectDetection(ImageProcessingEntity):
     @property
     def state(self):
         """Return the state of the entity."""
-        single_string = "".join(self._detected_text)  # As can be a list of string, join
-        if self._numbers_only:  # attempt to return numbers
-            found_numbers = re.sub("[^0-9,.]", "", single_string)
-            if found_numbers:
-                return found_numbers
-        return single_string
+        return self._state
 
     @property
     def unit_of_measurement(self):
@@ -306,10 +321,6 @@ class ObjectDetection(ImageProcessingEntity):
             attr[CONF_MAKE_BW] = self._make_bw
         if self._erode:
             attr[CONF_ERODE] = self._erode
-        if self._detected_text:
-            attr["detected_text"] = self._detected_text
-        else:
-            attr["detected_text"] = ""
         if self._save_file_folder:
             attr[CONF_SAVE_FILE_FOLDER] = str(self._save_file_folder)
             attr[CONF_SAVE_TIMESTAMPTED_FILE] = self._save_timestamped_file
