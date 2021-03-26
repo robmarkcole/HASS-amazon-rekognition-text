@@ -2,7 +2,7 @@
         "domain": "amazon_rekognition_text",
         "name": "Amazon Rekognition text integration",
         "documentation": "https://github.com/robmarkcole/HASS-amazon-rekognition-text",
-        "version": "0.1.0",
+        "version": "0.6.0",
         "requirements": [
                 "pillow",
                 "boto3"
