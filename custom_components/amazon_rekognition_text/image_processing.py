@@ -57,10 +57,6 @@ REQUIREMENTS = ["boto3"]
 CONF_BOTO_RETRIES = "boto_retries"
 DEFAULT_BOTO_RETRIES = 5
 
-# Numbers only
-NUMBERS_ONLY_REGEX = r'\d+'
-DECIMALS_REGEX = r'^\d*\.?\d*$'
-
 EROSION_MAP = {
     "low": 3,
     "medium": 5,
@@ -215,11 +211,11 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-        self._detected_text = []
+        self._detected_text = ['']
 
     def process_image(self, image):
         """Process an image."""
-        self._detected_text = []
+        self._detected_text = ['']
 
         self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
         self._image_width, self._image_height = self._image.size
@@ -278,13 +274,9 @@ class ObjectDetection(ImageProcessingEntity):
     @property
     def state(self):
         """Return the state of the entity."""
-        text_no_whitespace = "".join(self._detected_text).replace(" ", "")
+        text_no_whitespace = "".join(self._detected_text) # As can be a list of string, join
         if self._numbers_only: # attempt to return numbers
-            found_numbers = re.findall(DECIMALS_REGEX, text_no_whitespace) # can be a list
-            if not found_numbers: # Failed to find decimals, try numbers only
-                found_numbers = re.findall(NUMBERS_ONLY_REGEX, text_no_whitespace) # can be a list
-            found_numbers = "".join(found_numbers) # join the list
-            found_numbers = found_numbers.lstrip('0') # strip leading zeros
+            found_numbers = re.sub('[^0-9,.]', '', text_no_whitespace)
             if found_numbers:
                 return found_numbers
         return text_no_whitespace

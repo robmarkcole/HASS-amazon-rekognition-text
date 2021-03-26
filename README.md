@@ -35,7 +35,7 @@ Configuration variables:
 - **roi_x_max**: (optional, default 1), range 0-1, must be more than roi_x_min
 - **roi_y_min**: (optional, default 0), range 0-1, must be less than roi_y_max
 - **roi_y_max**: (optional, default 1), range 0-1, must be more than roi_y_min
-- **numbers_only**: (optional, default False), if `True`, attempts to return only the numbers detected, stripping leading zeros
+- **numbers_only**: (optional, default False), if `True`, attempts to return only the numbers detected
 - **make_bw**: (optional, default False), if `True`, converts image to black and white before processing
 - **erode**: (optional, default None, values are `low`, `medium`, `high`), useful for merging black pixels
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
