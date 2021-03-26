@@ -23,7 +23,7 @@ from homeassistant.components.image_processing import (
 from homeassistant.core import split_entity_id
 from homeassistant.util.pil import draw_box
 
-from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME
+from homeassistant.const import ATTR_ENTITY_ID, ATTR_NAME, CONF_UNIT_OF_MEASUREMENT
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -97,6 +97,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ERODE, default=None): vol.In([None, "low", "medium", "high"]),
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_SAVE_TIMESTAMPTED_FILE, default=False): cv.boolean,
+        vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=''): cv.string,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
         ),
@@ -166,6 +167,7 @@ def setup_platform(hass, config, add_devices, discovery_info=None):
                 erode=config.get(CONF_ERODE),
                 save_file_folder=save_file_folder,
                 save_timestamped_file=config.get(CONF_SAVE_TIMESTAMPTED_FILE),
+                unit_of_measurement=config.get(CONF_UNIT_OF_MEASUREMENT),
                 camera_entity=camera.get(CONF_ENTITY_ID),
                 name=camera.get(CONF_NAME),
             )
@@ -189,6 +191,7 @@ class ObjectDetection(ImageProcessingEntity):
         erode,
         save_file_folder,
         save_timestamped_file,
+        unit_of_measurement,
         camera_entity,
         name=None,
     ):
@@ -204,6 +207,7 @@ class ObjectDetection(ImageProcessingEntity):
         self._erode = erode
         self._save_file_folder = save_file_folder
         self._save_timestamped_file = save_timestamped_file
+        self._unit_of_measurement = unit_of_measurement
 
         self._camera_entity = camera_entity
         if name:  # Since name is optional.
@@ -284,6 +288,12 @@ class ObjectDetection(ImageProcessingEntity):
             if found_numbers:
                 return found_numbers
         return text_no_whitespace
+
+    @property
+    def unit_of_measurement(self):
+        """Return the unit of measurement."""
+        return self._unit_of_measurement
+
 
     @property
     def name(self):

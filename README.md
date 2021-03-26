@@ -22,6 +22,7 @@ image_processing:
     roi_y_max: 0.9
     save_file_folder: /config/rekognition/
     save_timestamped_file: True
+    unit_of_measurement: £
     source:
       - entity_id: camera.local_file
 ```
@@ -39,6 +40,7 @@ Configuration variables:
 - **erode**: (optional, default None, values are `low`, `medium`, `high`), useful for merging black pixels
 - **save_file_folder**: (Optional) The folder to save processed images to. Note that folder path should be added to [whitelist_external_dirs](https://www.home-assistant.io/docs/configuration/basic/)
 - **save_timestamped_file**: (Optional, default `False`, requires `save_file_folder` to be configured) Save the processed image with the time of detection in the filename.
+- **unit_of_measurement**: (Optional) the units to add, required if you want a graph for numbers
 - **source**: Must be a camera.
 
 For the `roi`, the (x=0,y=0) position is the top left pixel of the image, and the (x=1,y=1) position is the bottom right pixel of the image. It might seem a bit odd to have y running from top to bottom of the image, but that is the coordinate system used by pillow. A streamlit app is provided to help with configuration of the ROI values, documented at the end of this readme. **Note** that to view the configured `roi` you must configure the `save_file_folder` and view the latest saved image, which can be displayed on the HA UI with a [local_file camera](https://www.home-assistant.io/integrations/local_file/)
