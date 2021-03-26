@@ -57,11 +57,7 @@ REQUIREMENTS = ["boto3"]
 CONF_BOTO_RETRIES = "boto_retries"
 DEFAULT_BOTO_RETRIES = 5
 
-EROSION_MAP = {
-    "low": 3,
-    "medium": 5,
-    "high": 9
-}
+EROSION_MAP = {"low": 3, "medium": 5, "high": 9}
 
 CONF_ERODE = "erode"
 CONF_MAKE_BW = "make_bw"
@@ -93,7 +89,7 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend(
         vol.Optional(CONF_ERODE, default=None): vol.In([None, "low", "medium", "high"]),
         vol.Optional(CONF_SAVE_FILE_FOLDER): cv.isdir,
         vol.Optional(CONF_SAVE_TIMESTAMPTED_FILE, default=False): cv.boolean,
-        vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=''): cv.string,
+        vol.Optional(CONF_UNIT_OF_MEASUREMENT, default=""): cv.string,
         vol.Optional(CONF_BOTO_RETRIES, default=DEFAULT_BOTO_RETRIES): vol.All(
             vol.Coerce(int), vol.Range(min=0)
         ),
@@ -211,11 +207,11 @@ class ObjectDetection(ImageProcessingEntity):
         else:
             entity_name = split_entity_id(camera_entity)[1]
             self._name = f"rekognition_text_{entity_name}"
-        self._detected_text = ['']
+        self._detected_text = [""]
 
     def process_image(self, image):
         """Process an image."""
-        self._detected_text = ['']
+        self._detected_text = [""]
 
         self._image = Image.open(io.BytesIO(bytearray(image)))  # used for saving only
         self._image_width, self._image_height = self._image.size
@@ -229,10 +225,14 @@ class ObjectDetection(ImageProcessingEntity):
         # Crop and process the image before sending to AWS
         img_cropped = self._image.crop((left, upper, right, lower))
         if self._make_bw:
-            img_cropped = img_cropped.convert('L') # convert to black and white
+            img_cropped = img_cropped.convert("L")  # convert to black and white
         if self._erode:
-            erode_factor = EROSION_MAP.get(self._erode) # returns value ad configured sensitivity
-            img_cropped = img_cropped.filter(ImageFilter.MinFilter(erode_factor)) # erode
+            erode_factor = EROSION_MAP.get(
+                self._erode
+            )  # returns value ad configured sensitivity
+            img_cropped = img_cropped.filter(
+                ImageFilter.MinFilter(erode_factor)
+            )  # erode
 
         response = self._aws_rekognition_client.detect_text(
             Image={"Bytes": image_to_byte_array(img_cropped)}
@@ -274,18 +274,17 @@ class ObjectDetection(ImageProcessingEntity):
     @property
     def state(self):
         """Return the state of the entity."""
-        text_no_whitespace = "".join(self._detected_text) # As can be a list of string, join
-        if self._numbers_only: # attempt to return numbers
-            found_numbers = re.sub('[^0-9,.]', '', text_no_whitespace)
+        single_string = "".join(self._detected_text)  # As can be a list of string, join
+        if self._numbers_only:  # attempt to return numbers
+            found_numbers = re.sub("[^0-9,.]", "", single_string)
             if found_numbers:
                 return found_numbers
-        return text_no_whitespace
+        return single_string
 
     @property
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return self._unit_of_measurement
-
 
     @property
     def name(self):
